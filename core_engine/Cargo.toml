@@ -1,0 +1,25 @@
+[package]
+name = "pentester"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aydın Arda Demiralp"]
+description = "ISU-SecOps-Engine — HTTP Header Analyzer modülü"
+
+[[bin]]
+name = "pentester"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+colored = "2"
+url = "2"
+clap = { version = "4", features = ["derive"] }
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
