@@ -1,8 +1,6 @@
-# 1. README.md dosyasini acip temizleyerek ham Markdown metnini yaziyoruz
-cat << 'EOF' > README.md
 <div align="center">
   <a href="https://istinye.edu.tr">
-    <img src="https://upload.wikimedia.org/wikipedia/tr/b/b8/%C4%B0stinye_%C3%9Cniversitesi_Logosu.png" alt="İstinye Üniversitesi" width="180"/>
+    <img src="https://brightpathturkiye.com/istinye-universitesi/?lang=tr" alt="İstinye Üniversitesi" width="180"/>
   </a>
 
   # ISU-SecOps-Engine & Orchestrator
