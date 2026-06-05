@@ -1,0 +1,26 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ortam değişkenleri
+.env
+
+# Node
+node_modules/
+
+# Build çıktıları
+target/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# Raporlar (isteğe bağlı, commit etmek istemiyorsan)
+# reports/
