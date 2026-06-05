@@ -61,7 +61,7 @@ _task_store: dict[str, dict[str, Any]] = {}
 _store_lock = asyncio.Lock()
 """Eşzamanlı görev deposu erişimi için asyncio kilidi."""
 
-_concurrent_scan_semaphore: asyncio.Semaphore | None = None
+_concurrent_scan_semaphore: asyncio.Semaphore = asyncio.Semaphore(5)
 """Eşzamanlı tarama sınırlaması için semaphore."""
 
 
