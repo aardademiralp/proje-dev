@@ -213,6 +213,14 @@ def sanitize_target(target: str) -> str:
     except ValueError:
         pass
 
+    # IP görünümlü ama geçersiz adresleri reddet (örn: 256.256.256.256)
+    import re as _ipre
+    if _ipre.match(r"^\d+(\.\d+)+$", target):
+        raise ValueError(
+            f"Geçersiz tarama hedefi: '{target}'. "
+            "IPv4 adresi, CIDR notasyonu veya geçerli bir hostname bekleniyor."
+        )
+
     # Hostname
     if _HOSTNAME_RE.match(target):
         return target
