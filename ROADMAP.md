@@ -1,6 +1,6 @@
 # 🗺️ ISU-SecOps-Orchestrator Yol Haritası (ROADMAP.md)
 
-Bu dosya, İstinye Üniversitesi Siber Güvenlik Bölümü Bitirme Projesi standartlarına uygun olarak, projenin araştırma, kurulum, uygulama ve test aşamalarını belgelemektedir.
+Bu dosya, İstinye Üniversitesi Siber Güvenlik Bölümü Sızma Testi Projesi standartlarına uygun olarak, projenin araştırma, kurulum, uygulama ve test aşamalarını belgelemektedir.
 
 ---
 

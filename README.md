@@ -9,7 +9,7 @@
   ![License](https://img.shields.io/badge/Lisans-MIT-green?style=flat-square)
   ![Dil](https://img.shields.io/badge/Dil-Python%20%26%20Rust-blue?style=flat-square)
   ![Durum](https://img.shields.io/badge/Durum-Tamam%C4%B1na%20Erdirildi-brightgreen?style=flat-square)
-  ![Ders](https://img.shields.io/badge/Ders-Bitirme%20Projesi-purple?style=flat-square)
+  ![Ders](https://img.shields.io/badge/Ders-BGT006-purple?style=flat-square)
 </div>
 
 ---
@@ -26,15 +26,15 @@
 ### 🎓 Öğrenci Bilgileri
 | Alan | Bilgi |
 |---|---|
-| **Ad Soyad** | Aydın [Soyadınız] |
-| **Öğrenci No** | [İlk 4 Hane]****[Son 4 Hane] |
+| **Ad Soyad** | Aydın Arda Demiralp |
+| **Öğrenci No** | 2520****1011 |
 
 ### 📖 Ders Bilgileri
 | Alan | Bilgi |
 |---|---|
-| **Ders Adı** | Bitirme Projesi |
-| **Ders Kodu** | BGT212 |
-| **Kredi** | 6 AKTS |
+| **Ders Adı** | Sızma Testi |
+| **Ders Kodu** | BGT006 |
+| **Kredi** | 3 AKTS |
 | **Ön Koşullar** | Ağ Temelleri, Linux CLI, Python, Rust |
 | **Dönem** | 2025-2026 Bahar |
 
