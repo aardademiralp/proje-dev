@@ -31,7 +31,7 @@ pub async fn start_server() {
 
 /// Ana sayfa handler'ı
 async fn index_handler() -> Html<&'static str> {
-    Html(include_str!("../static/index.html"))
+    Html(include_str!("../../static/index.html"))
 }
 
 /// URL parametresi

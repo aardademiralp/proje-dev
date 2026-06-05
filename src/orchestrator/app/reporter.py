@@ -528,10 +528,10 @@ class VulnerabilityReportGenerator:
         if not owasp_list:
             owasp_list = "- Kritik OWASP kategorisi tespit edilmedi."
 
-        return textwrap.dedent(f"""\
+        template = textwrap.dedent("""\
             ## 📋 1. Yönetici Özeti (Executive Summary)
 
-            Bu rapor, **{scan_result.target}** hedefi üzerinde ISU-SecOps-Engine
+            Bu rapor, **{target}** hedefi üzerinde ISU-SecOps-Engine
             tarafından gerçekleştirilen otomatik güvenlik taramasının bulgularını
             özetlemektedir.
 
@@ -539,15 +539,15 @@ class VulnerabilityReportGenerator:
 
             | Metrik                        | Değer                          |
             |-------------------------------|--------------------------------|
-            | Tarama Hedefi                 | `{scan_result.target}`         |
-            | Taranan Host Sayısı           | **{summary.total_hosts}**      |
-            | Toplam Açık Port              | **{summary.total_open_ports}** |
-            | Kritik Bulgular               | 🔴 **{summary.critical_count}** |
-            | Yüksek Bulgular               | 🟠 **{summary.high_count}**    |
-            | Orta Bulgular                 | 🟡 **{summary.medium_count}**  |
-            | Düşük Bulgular                | 🟢 **{summary.low_count}**    |
+            | Tarama Hedefi                 | `{target}`         |
+            | Taranan Host Sayısı           | **{total_hosts}**      |
+            | Toplam Açık Port              | **{total_open_ports}** |
+            | Kritik Bulgular               | 🔴 **{critical_count}** |
+            | Yüksek Bulgular               | 🟠 **{high_count}**    |
+            | Orta Bulgular                 | 🟡 **{medium_count}**  |
+            | Düşük Bulgular                | 🟢 **{low_count}**    |
             | Tarama Süresi                 | {duration_str}                 |
-            | **Genel Risk Seviyesi**       | {summary.risk_emoji} **{summary.overall_risk}** |
+            | **Genel Risk Seviyesi**       | {risk_emoji} **{overall_risk}** |
 
             ### 1.2 Öne Çıkan Bulgular
 
@@ -555,8 +555,29 @@ class VulnerabilityReportGenerator:
 
             ### 1.3 Acil Eylem Gerektiren Durumlar
 
-            {"⚠️ **DERHAL MÜDAHALE GEREKTİREN** kritik güvenlik açıkları tespit edilmiştir. Detaylar için bkz. Bölüm 4." if summary.critical_count > 0 else "✅ Acil müdahale gerektiren kritik bulgu tespit edilmemiştir."}
+            {urgent_message}
         """)
+
+        urgent_message = (
+            "⚠️ **DERHAL MÜDAHALE GEREKTİREN** kritik güvenlik açıkları tespit edilmiştir. Detaylar için bkz. Bölüm 4."
+            if summary.critical_count > 0
+            else "✅ Acil müdahale gerektiren kritik bulgu tespit edilmemiştir."
+        )
+
+        return template.format(
+            target=scan_result.target,
+            total_hosts=summary.total_hosts,
+            total_open_ports=summary.total_open_ports,
+            critical_count=summary.critical_count,
+            high_count=summary.high_count,
+            medium_count=summary.medium_count,
+            low_count=summary.low_count,
+            duration_str=duration_str,
+            risk_emoji=summary.risk_emoji,
+            overall_risk=summary.overall_risk,
+            owasp_list=owasp_list,
+            urgent_message=urgent_message,
+        )
 
     def _render_scope_and_methodology(self, scan_result: ScanResult) -> str:
         """Kapsam ve metodoloji bölümünü üretir."""
@@ -735,7 +756,7 @@ class VulnerabilityReportGenerator:
             f"- **{cat}**" for cat in sorted(summary.owasp_categories)
         )
 
-        return textwrap.dedent(f"""\
+        template = textwrap.dedent("""\
             ## 🏆 5. OWASP Top 10 Analizi
 
             Tarama sonuçları OWASP Top 10 (2021) güvenlik açığı kategorileriyle
@@ -746,6 +767,8 @@ class VulnerabilityReportGenerator:
             > 📚 Referans: [OWASP Top 10 2021](https://owasp.org/www-project-top-ten/)
             > National Vulnerability Database: [https://nvd.nist.gov](https://nvd.nist.gov)
         """)
+
+        return template.format(cat_list=cat_list)
 
     def _render_remediation(self, scan_result: ScanResult) -> str:
         """Sıkılaştırma önerileri bölümünü üretir."""
@@ -843,7 +866,7 @@ class VulnerabilityReportGenerator:
 
         steps_list = "\n".join(f"{i}. {step}" for i, step in enumerate(next_steps, 1))
 
-        return textwrap.dedent(f"""\
+        template = textwrap.dedent("""\
             ## 📌 7. Sonuç ve Tavsiyeler
 
             {urgency}
@@ -862,6 +885,8 @@ class VulnerabilityReportGenerator:
             - **Yıllık:** Kapsamlı Red Team değerlendirmesi
             - **Sürekli:** Güvenlik log izleme ve SIEM entegrasyonu
         """)
+
+        return template.format(urgency=urgency, steps_list=steps_list)
 
     def _render_footer(self, scan_result: ScanResult) -> str:
         """Rapor alt bilgisini üretir."""

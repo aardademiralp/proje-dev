@@ -5,13 +5,27 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: isu_secops_orchestrator
+    container_name: isu-secops-orchestrator
     ports:
       - "8000:8000"
-    volumes:
-      - ./reports:/app/reports
-    env_file:
-      - .env
     environment:
-      - ENV=production
-    restart: always
+      - APP_ENV=production
+      - ISU_ENGINE_PATH=/usr/local/bin/isu-secops-engine
+      - SCAN_TIMEOUT=120
+      - REPORTS_DIR=/app/reports
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - reports_data:/app/reports
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: isu-secops-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  reports_data:

@@ -57,6 +57,14 @@ body { font-family:"Inter",sans-serif; background:var(--bg-main); color:var(--te
 .badge.critical { background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.2); }
 .badge.high { background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.2); }
 .badge.low { background:rgba(59,130,246,0.1); color:var(--accent-blue); border:1px solid rgba(59,130,246,0.2); }
+.panel { display: none; padding: 30px; }
+.panel.active { display: block; }
+#p-dash.active { display: grid; }
+.scan-input { flex:1; background:#050814; border:1px solid var(--border-color); border-radius:8px; padding:12px 16px; color:var(--text-main); font-family:'JetBrains Mono', monospace; font-size:14px; outline:none; transition:border 0.2s; }
+.scan-input:focus { border-color:var(--accent-blue); }
+.scan-btn { background:linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border:none; border-radius:8px; padding:12px 24px; color:white; font-weight:600; cursor:pointer; font-size:14px; transition:opacity 0.2s; }
+.scan-btn:hover { opacity:0.9; }
+.terminal { background:#050814; border:1px solid var(--border-color); border-radius:8px; padding:16px; font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--success); min-height:120px; white-space:pre-wrap; line-height:1.6; }
 </style>
 </head>
 <body>
@@ -95,7 +103,7 @@ body { font-family:"Inter",sans-serif; background:var(--bg-main); color:var(--te
     </div>
   </div>
 
-  <div class="dashboard-grid" id="main-view">
+  <div class="dashboard-grid panel active" id="p-dash">
     <!-- Stat Cards -->
     <div class="stat-card">
       <div class="stat-title">Engellenen Tehditler</div>
@@ -123,13 +131,17 @@ body { font-family:"Inter",sans-serif; background:var(--bg-main); color:var(--te
       <div class="chart-header">
         <div class="chart-title">Ağ Trafiği Analizi</div>
       </div>
-      <canvas id="trafficChart" height="200"></canvas>
+      <div style="position:relative; height:200px; width:100%;">
+        <canvas id="trafficChart"></canvas>
+      </div>
     </div>
     <div class="chart-container">
       <div class="chart-header">
         <div class="chart-title">Tehdit Dağılımı</div>
       </div>
-      <canvas id="threatChart" height="200"></canvas>
+      <div style="position:relative; height:200px; width:100%;">
+        <canvas id="threatChart"></canvas>
+      </div>
     </div>
 
     <!-- Recent Alerts -->
@@ -177,6 +189,49 @@ body { font-family:"Inter",sans-serif; background:var(--bg-main); color:var(--te
       </table>
     </div>
   </div>
+
+  <div class="panel" id="p-scans">
+    <div class="stat-card" style="margin-bottom: 20px;">
+      <div class="chart-title" style="margin-bottom:15px; font-size:18px;">Yeni Güvenlik Taraması Başlat</div>
+      <div style="display:flex; gap:12px; margin-bottom:20px;">
+        <input type="text" id="scan-t" class="scan-input" placeholder="Hedef IP (örn: 192.168.1.1) veya Domain (örn: internal.corp)">
+        <button class="scan-btn" onclick="startScan()">▶ Taramayı Başlat</button>
+      </div>
+      <div class="terminal" id="scan-out">> Hazır. Hedef giriniz ve taramayı başlatınız...</div>
+    </div>
+    <div class="table-container">
+      <div style="padding: 20px; border-bottom: 1px solid var(--border-color); font-weight: 600;">Son Tarama Görevleri</div>
+      <table>
+        <thead>
+          <tr><th>Görev ID</th><th>Hedef</th><th>Durum</th><th>Zaman</th></tr>
+        </thead>
+        <tbody id="tasks-list">
+          <tr><td colspan="4" style="text-align:center; padding:30px; color:var(--text-muted);">Henüz tarama başlatılmadı.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="p-threats">
+    <div class="stat-card">
+      <div class="chart-title">Tehdit İstihbaratı Modülü</div>
+      <p style="color:var(--text-muted); margin-top:10px;">Gelişmiş tehdit istihbaratı ve IPS kuralları burada listelenecektir.</p>
+    </div>
+  </div>
+
+  <div class="panel" id="p-reports">
+    <div class="stat-card">
+      <div class="chart-title">Sistem Raporları</div>
+      <p style="color:var(--text-muted); margin-top:10px;">Oluşturulan markdown PDF raporlarına buradan ulaşabilirsiniz.</p>
+    </div>
+  </div>
+
+  <div class="panel" id="p-settings">
+    <div class="stat-card">
+      <div class="chart-title">Platform Ayarları</div>
+      <p style="color:var(--text-muted); margin-top:10px;">FastAPI ve Rust Engine konfigürasyonları.</p>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -186,10 +241,20 @@ setInterval(() => {
   document.getElementById('clk').textContent = d.toLocaleTimeString('tr-TR') + ' - ' + d.toLocaleDateString('tr-TR');
 }, 1000);
 
-// Navigation Mock
+// Navigation
 function go(page) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   event.currentTarget.classList.add('active');
+  
+  // Hide all panels
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  
+  // Show target panel
+  const targetPanel = document.getElementById('p-' + page);
+  if (targetPanel) {
+    targetPanel.classList.add('active');
+  }
+
   const titles = {
     'dash': 'Güvenlik Özeti',
     'scans': 'Aktif Taramalar',
@@ -198,6 +263,86 @@ function go(page) {
     'settings': 'Platform Ayarları'
   };
   document.getElementById('page-title').textContent = titles[page];
+}
+
+// Scan Functionality
+const tasks = [];
+async function startScan() {
+  const target = document.getElementById('scan-t').value.trim();
+  const out = document.getElementById('scan-out');
+  if (!target) {
+    out.style.color = 'var(--danger)';
+    out.textContent = '> HATA: Hedef boş olamaz.';
+    return;
+  }
+  
+  out.style.color = 'var(--accent-blue)';
+  out.textContent = '> Tarama başlatılıyor: ' + target + '\n> Lütfen bekleyin...';
+  
+  try {
+    const r = await fetch('/api/v1/scan', {
+      method: 'POST', 
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({target})
+    });
+    const d = await r.json();
+    
+    if (r.ok) {
+      out.style.color = 'var(--success)';
+      out.textContent = '> ✅ Tarama kuyruğa alındı!\n> Task ID : ' + d.task_id + '\n> Durum   : ' + d.status + '\n> Hedef   : ' + d.target;
+      tasks.unshift({id: d.task_id, target: d.target, status: d.status, time: new Date().toLocaleTimeString('tr-TR')});
+      renderTasks();
+      pollStatus(d.task_id, out);
+    } else {
+      out.style.color = 'var(--danger)';
+      out.textContent = '> ❌ API Hatası: ' + JSON.stringify(d);
+    }
+  } catch (e) {
+    out.style.color = 'var(--danger)';
+    out.textContent = '> ❌ Bağlantı hatası: FastAPI sunucusuna ulaşılamıyor.\n\nBackend çalışıyor mu kontrol edin.\n(http://localhost:8000)';
+    
+    // Fallback UI for testing without backend
+    tasks.unshift({id: 'TEST-' + Math.floor(Math.random()*1000), target: target, status: 'RUNNING', time: new Date().toLocaleTimeString('tr-TR')});
+    renderTasks();
+  }
+}
+
+function renderTasks() {
+  const el = document.getElementById('tasks-list');
+  if (!tasks.length) return;
+  const colors = {PENDING: 'var(--warning)', RUNNING: 'var(--accent-blue)', COMPLETED: 'var(--success)', FAILED: 'var(--danger)'};
+  el.innerHTML = tasks.slice(0,5).map(t => `
+    <tr>
+      <td style="font-family:monospace; font-size:12px; color:var(--text-muted);">${t.id}</td>
+      <td style="font-weight:500;">${t.target}</td>
+      <td><span class="badge" style="color:${colors[t.status]||'white'}; border:1px solid ${colors[t.status]||'white'}">${t.status}</span></td>
+      <td style="color:var(--text-muted);">${t.time}</td>
+    </tr>
+  `).join('');
+}
+
+async function pollStatus(id, out) {
+  for(let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const r = await fetch('/api/v1/scan/' + id);
+      const d = await r.json();
+      
+      const t = tasks.find(x => x.id === id);
+      if(t) { t.status = d.status; renderTasks(); }
+      
+      if(d.status === 'COMPLETED') {
+        out.textContent += '\n> ✅ Tarama başarıyla tamamlandı!';
+        out.innerHTML += `<br>> 📄 <a href="/api/v1/scan/${id}/report" target="_blank" style="color:#10b981; font-weight:bold; text-decoration:underline;">Tıklayıp Raporu İndirebilirsin</a>`;
+        break;
+      } else if (d.status === 'FAILED' || d.status === 'TIMEOUT') {
+        out.textContent += '\n> ❌ Tarama başarısız oldu: ' + (d.error_message || d.status);
+        break;
+      }
+    } catch(e) {
+      break;
+    }
+  }
 }
 
 // Init Charts safely
@@ -268,3 +413,5 @@ try {
 </script>
 </body>
 </html>
+
+

@@ -618,10 +618,9 @@ class TestRustEngineWrapper:
         cmd = wrapper._build_command("192.168.1.0/24")
 
         assert str(mock_engine_path) in cmd
-        assert "--target" in cmd
-        assert "192.168.1.0/24" in cmd
-        assert "--format" in cmd
-        assert "json" in cmd
+        assert "--url" in cmd
+        assert "http://192.168.1.0/24" in cmd
+        assert "--json" in cmd
 
 
 # ===========================================================================
