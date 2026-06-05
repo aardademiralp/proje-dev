@@ -1,17 +1,3 @@
-"""
-ISU-SecOps-Orchestrator — Async Scanner Module
-===============================================
-Rust tabanlı ISU-SecOps-Engine binary'sini tamamen asenkron (asyncio) bir
-mimaride çalıştıran, timeout korumalı ve kapsamlı hata yönetimine sahip
-RustEngineWrapper servisi.
-
-Bu modül, orchestrator'ın Rust core engine ile tek iletişim noktasıdır.
-Tüm süreç yönetimi (spawn, communicate, kill) bu katmanda gerçekleşir.
-
-Author: ISU-SecOps Team
-Version: 1.0.0
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -27,10 +13,6 @@ from .config import AppSettings, get_settings
 from .utils import format_duration, get_logger, get_service_name, timed, utc_now
 
 logger = get_logger(__name__)
-
-# ---------------------------------------------------------------------------
-# Özel İstisna Hiyerarşisi
-# ---------------------------------------------------------------------------
 
 
 class EngineError(Exception):
@@ -95,11 +77,6 @@ class EngineCrashError(EngineError):
     """
 
 
-# ---------------------------------------------------------------------------
-# Veri Modelleri
-# ---------------------------------------------------------------------------
-
-
 class ScanStatus(Enum):
     """Tarama görevinin yaşam döngüsü durumları."""
 
@@ -149,12 +126,6 @@ class PortInfo:
     def risk_level(self) -> str:
         """
         Portun risk seviyesini belirler.
-
-        Kural tabanlı basit risk sınıflandırması:
-        - Critical: Telnet (23), FTP (21), RDP (3389) gibi güvensiz protokoller
-        - High: SNMP (161), NetBIOS (139), SMB (445), Redis (6379)
-        - Medium: Veritabanı portları, mail portları
-        - Low: Güvenli protokoller (HTTPS, IMAPS vb.)
         """
         critical_ports = {21, 23, 135, 139, 445, 3389, 5900}
         high_ports = {25, 53, 161, 389, 1433, 1521, 5432, 6379, 27017}
@@ -210,9 +181,6 @@ class HostInfo:
 class ScanResult:
     """
     Tamamlanmış bir taramanın tüm sonuçlarını içeren veri yapısı.
-
-    Bu nesne ``RustEngineWrapper.run_scan()`` tarafından döndürülür ve
-    doğrudan ``VulnerabilityReportGenerator``'a geçirilir.
     """
 
     task_id: str
@@ -283,17 +251,9 @@ class ScanResult:
         }
 
 
-# ---------------------------------------------------------------------------
-# Çıktı Ayrıştırıcılar
-# ---------------------------------------------------------------------------
-
-
 class _OutputParser:
     """
     ISU-SecOps-Engine'den gelen çıktıyı ayrıştıran dahili sınıf.
-
-    Hem JSON hem de yapılandırılmış metin formatını destekler.
-    Format otomatik olarak algılanır.
     """
 
     @staticmethod
@@ -308,16 +268,6 @@ class _OutputParser:
     def parse(cls, output: str, target: str) -> list[HostInfo]:
         """
         Ham engine çıktısını ``HostInfo`` listesine dönüştürür.
-
-        Args:
-            output: Engine stdout çıktısı.
-            target: Taranan hedef (fallback host adresi olarak).
-
-        Returns:
-            Ayrıştırılmış host bilgilerinin listesi.
-
-        Raises:
-            EngineOutputError: Çıktı ayrıştırılamıyorsa.
         """
         fmt = cls.detect_format(output)
 
@@ -338,7 +288,6 @@ class _OutputParser:
 
         hosts: list[HostInfo] = []
 
-        # Çıktı ya bir liste (multiple hosts) ya da tek obje (single host) olabilir
         if isinstance(data, dict):
             data = [data]
 
@@ -351,28 +300,41 @@ class _OutputParser:
     @staticmethod
     def _parse_json_host(data: dict[str, Any], fallback_address: str) -> HostInfo:
         """Tek bir JSON host objesini HostInfo'ya dönüştürür."""
-        address = data.get("address") or data.get("ip") or fallback_address
+        address = data.get("url") or data.get("address") or data.get("ip") or fallback_address
         hostname = data.get("hostname") or data.get("host") or ""
         status = data.get("status", "up")
         os_detection = data.get("os") or data.get("os_detection") or ""
 
         ports: list[PortInfo] = []
-        raw_ports = data.get("ports") or data.get("open_ports") or []
+        
+        if "headers" in data and isinstance(data["headers"], list):
+            for h in data["headers"]:
+                if not h.get("passed", True) or not h.get("present", True):
+                    port_info = PortInfo(
+                        port=80,
+                        protocol="tcp",
+                        state="open",
+                        service=h.get("name", "security-header"),
+                        version=h.get("note", "Missing security header"),
+                        banner=f"Missing Security Header: {h.get('name')}"
+                    )
+                    ports.append(port_info)
+        else:
+            raw_ports = data.get("ports") or data.get("open_ports") or []
+            for p in raw_ports:
+                port_num = p.get("port") or p.get("number")
+                if port_num is None:
+                    continue
 
-        for p in raw_ports:
-            port_num = p.get("port") or p.get("number")
-            if port_num is None:
-                continue
-
-            port_info = PortInfo(
-                port=int(port_num),
-                protocol=p.get("protocol", "tcp").lower(),
-                state=p.get("state", "open").lower(),
-                service=p.get("service") or p.get("name") or "",
-                version=p.get("version") or p.get("product") or "",
-                banner=p.get("banner") or "",
-            )
-            ports.append(port_info)
+                port_info = PortInfo(
+                    port=int(port_num),
+                    protocol=p.get("protocol", "tcp").lower(),
+                    state=p.get("state", "open").lower(),
+                    service=p.get("service") or p.get("name") or "",
+                    version=p.get("version") or p.get("product") or "",
+                    banner=p.get("banner") or "",
+                )
+                ports.append(port_info)
 
         return HostInfo(
             address=str(address),
@@ -386,13 +348,6 @@ class _OutputParser:
     def _parse_text(cls, output: str, target: str) -> list[HostInfo]:
         """
         Yapılandırılmış metin formatındaki engine çıktısını ayrıştırır.
-
-        Beklenen format örneği::
-
-            HOST: 192.168.1.1 (server.local)
-            PORT: 22/tcp OPEN SSH OpenSSH_8.9
-            PORT: 80/tcp OPEN HTTP nginx/1.18.0
-            PORT: 443/tcp OPEN HTTPS nginx/1.18.0
         """
         import re
 
@@ -439,7 +394,6 @@ class _OutputParser:
         if current_host:
             hosts.append(current_host)
 
-        # Hiç host bulunamadıysa ham çıktıdan basit bir host oluştur
         if not hosts and output.strip():
             logger.warning(
                 "Engine çıktısı ayrıştırılamadı, ham çıktı kullanılıyor.",
@@ -450,74 +404,30 @@ class _OutputParser:
         return hosts
 
 
-# ---------------------------------------------------------------------------
-# Ana Servis Sınıfı
-# ---------------------------------------------------------------------------
-
-
 class RustEngineWrapper:
     """
     ISU-SecOps-Engine Rust binary'sini asenkron olarak çalıştıran servis sınıfı.
-
-    Bu sınıf şu sorumlulukları üstlenir:
-        1. Binary'nin varlığını ve çalıştırılabilirliğini doğrulama
-        2. asyncio ile non-blocking süreç başlatma
-        3. Timeout yönetimi ve graceful process termination
-        4. Stdout/stderr toplama ve çıktı ayrıştırma
-        5. Sonuçları ScanResult modeline dönüştürme
-
-    Usage::
-
-        wrapper = RustEngineWrapper()
-        result = await wrapper.run_scan(
-            task_id="task-abc123",
-            target="192.168.1.0/24",
-        )
-
-    Raises:
-        EngineNotFoundError: Binary bulunamadığında.
-        EngineTimeoutError: Tarama zaman aşımına uğradığında.
-        EngineCrashError: Binary sıfırdan farklı çıkış kodu döndürdüğünde.
     """
 
     def __init__(self, settings: AppSettings | None = None) -> None:
-        """
-        Args:
-            settings: Uygulama konfigürasyonu. None ise singleton settings kullanılır.
-        """
         self._settings = settings or get_settings()
         self._parser = _OutputParser()
 
-    # ------------------------------------------------------------------
-    # Ön Kontroller
-    # ------------------------------------------------------------------
-
     def _validate_engine(self) -> None:
-        """
-        Rust binary'sini çalıştırmadan önce varlık ve izin kontrolü yapar.
-
-        Raises:
-            EngineNotFoundError: Binary bulunamadığında veya izin eksikse.
-        """
         engine_path = self._settings.engine_path
 
-        # PATH üzerinden arama yap
         if not engine_path.is_absolute():
             found = shutil.which(str(engine_path))
             if not found:
                 raise EngineNotFoundError(
                     f"ISU-SecOps-Engine binary'si PATH üzerinde bulunamadı: "
-                    f"'{engine_path}'. "
-                    "Lütfen binary'nin PATH'te olduğundan veya ISU_ENGINE_PATH "
-                    "değişkeninin doğru ayarlandığından emin olun."
+                    f"'{engine_path}'."
                 )
             return
 
         if not engine_path.exists():
             raise EngineNotFoundError(
-                f"ISU-SecOps-Engine binary'si bulunamadı: '{engine_path}'. "
-                "Lütfen Rust projesini derleyip binary'yi doğru konuma kopyalayın. "
-                "Bkz: README.md → Kurulum Kılavuzu"
+                f"ISU-SecOps-Engine binary'si bulunamadı: '{engine_path}'."
             )
 
         if not engine_path.is_file():
@@ -525,46 +435,28 @@ class RustEngineWrapper:
                 f"Belirtilen engine yolu bir dosya değil: '{engine_path}'."
             )
 
-        # Windows'ta executable kontrolü (os.access X_OK Windows'ta her zaman True döner,
-        # bu yüzden sadece dosya varlığı kontrolü yapılır)
         import os
         import platform
         if platform.system() != "Windows" and not os.access(engine_path, os.X_OK):
             raise EngineNotFoundError(
-                f"ISU-SecOps-Engine binary'si çalıştırma iznine sahip değil: "
-                f"'{engine_path}'. "
-                "Lütfen `chmod +x` komutu ile çalıştırma izni verin."
+                f"ISU-SecOps-Engine binary'si çalıştırma iznine sahip değil: '{engine_path}'."
             )
-
-    # ------------------------------------------------------------------
-    # Komut Oluşturma
-    # ------------------------------------------------------------------
 
     def _build_command(self, target: str, extra_args: list[str] | None = None) -> list[str]:
         """
         Engine için komut satırı argümanları listesini oluşturur.
-
-        Args:
-            target: Taranacak hedef.
-            extra_args: Ek argümanlar.
-
-        Returns:
-            Komut satırı token listesi.
         """
-        cmd = [str(self._settings.engine_path), "--target", target, "--format", "json"]
+        url = target
+        # Varsayılan protokol olarak http:// kullanıyoruz. (Gerekirse HTTPS'e otomatik yönlenecektir)
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = f"http://{url}"
+            
+        cmd = [str(self._settings.engine_path), "--url", url, "--json"]
 
-        # Konfigürasyondan gelen ek argümanlar
-        cmd.extend(self._settings.engine_args_extra)
-
-        # Çağrıya özgü ek argümanlar
         if extra_args:
             cmd.extend(extra_args)
 
         return cmd
-
-    # ------------------------------------------------------------------
-    # Asenkron Tarama
-    # ------------------------------------------------------------------
 
     @timed(logger_name=__name__)
     async def run_scan(
@@ -573,27 +465,6 @@ class RustEngineWrapper:
         target: str,
         extra_args: list[str] | None = None,
     ) -> ScanResult:
-        """
-        Belirtilen hedef için tarama başlatır ve sonucu döndürür.
-
-        Bu metod tamamen asenkron çalışır; event loop'u bloklamaz.
-        Büyük ağ taramalarında HTTP bağlantılarının kopmaması için
-        FastAPI BackgroundTasks ile birlikte kullanılmalıdır.
-
-        Args:
-            task_id: Görevi tanımlayan benzersiz kimlik.
-            target: Taranacak hedef (IP, CIDR, hostname).
-            extra_args: Engine'e geçirilecek ek komut satırı argümanları.
-
-        Returns:
-            Tarama sonuçlarını içeren ``ScanResult`` nesnesi.
-
-        Raises:
-            EngineNotFoundError: Binary bulunamadığında.
-            EngineTimeoutError: Timeout aşıldığında.
-            EngineCrashError: Binary hatalı çıkış yaptığında.
-            EngineOutputError: Çıktı ayrıştırılamadığında.
-        """
         started_at = utc_now()
 
         logger.info(
@@ -601,7 +472,6 @@ class RustEngineWrapper:
             extra={"task_id": task_id, "target": target},
         )
 
-        # Binary kontrolü
         self._validate_engine()
 
         command = self._build_command(target, extra_args)
@@ -632,14 +502,12 @@ class RustEngineWrapper:
                 started_at=started_at,
                 completed_at=utc_now(),
                 error_message=(
-                    f"Tarama {self._settings.scan_timeout} saniyede tamamlanamadı "
-                    "ve iptal edildi."
+                    f"Tarama {self._settings.scan_timeout} saniyede tamamlanamadı ve iptal edildi."
                 ),
             )
         except EngineError:
             raise
 
-        # Çıktı ayrıştırma
         hosts = self._parser.parse(stdout, target)
 
         completed_at = utc_now()
@@ -673,21 +541,6 @@ class RustEngineWrapper:
         task_id: str,
         target: str,
     ) -> tuple[str, str]:
-        """
-        Komutu çalıştırır ve timeout aşılırsa süreci düzgün şekilde sonlandırır.
-
-        Args:
-            command: Çalıştırılacak komut ve argümanlar.
-            task_id: Log bağlamı için görev kimliği.
-            target: Log bağlamı için hedef.
-
-        Returns:
-            (stdout, stderr) tuple'ı.
-
-        Raises:
-            EngineTimeoutError: Timeout aşıldığında.
-            EngineCrashError: Sıfırdan farklı çıkış kodunda.
-        """
         process: asyncio.subprocess.Process | None = None
 
         try:
@@ -719,7 +572,7 @@ class RustEngineWrapper:
                     if process.returncode is None:
                         process.kill()
                 except ProcessLookupError:
-                    pass  # Süreç zaten sonlanmış
+                    pass
 
             raise EngineTimeoutError(
                 f"Tarama {self._settings.scan_timeout}s timeout'a uğradı.",
@@ -752,17 +605,7 @@ class RustEngineWrapper:
 
         return stdout, stderr
 
-    # ------------------------------------------------------------------
-    # Sağlık Kontrolü
-    # ------------------------------------------------------------------
-
     async def health_check(self) -> dict[str, Any]:
-        """
-        Engine binary'sinin erişilebilirliğini ve çalışabilirliğini kontrol eder.
-
-        Returns:
-            Sağlık durumu bilgisi içeren sözlük.
-        """
         try:
             self._validate_engine()
             engine_available = True
@@ -771,7 +614,6 @@ class RustEngineWrapper:
             engine_available = False
             engine_error = str(exc)
 
-        # Versiyon bilgisi alma girişimi
         engine_version = "unknown"
         if engine_available:
             try:
