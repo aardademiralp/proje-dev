@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isu_secops_orchestrator
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./reports:/app/reports
+    env_file:
+      - .env
+    environment:
+      - ENV=production
+    restart: always
