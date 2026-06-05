@@ -42,6 +42,7 @@ from orchestrator.app.reporter import (
     VulnerabilityReportGenerator,
 )
 from orchestrator.app.scanner import (
+    EngineError,
     EngineCrashError,
     EngineNotFoundError,
     EngineOutputError,
@@ -149,6 +150,7 @@ def mock_engine_path(temp_dir: Path) -> Path:
     """
     engine = temp_dir / "isu-secops-engine"
     engine.write_text("#!/bin/sh\necho 'fake engine'")
+    engine.chmod(0o755)
     return engine
 
 
@@ -567,7 +569,7 @@ class TestRustEngineWrapper:
         test_settings = AppSettings(
             engine_path=mock_engine_path,
             reports_dir=test_settings.reports_dir,
-            scan_timeout=1,  # 1 saniye timeout
+            scan_timeout=10,  # minimum 10 saniye
         )
         wrapper = RustEngineWrapper(settings=test_settings)
 
