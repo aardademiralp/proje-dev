@@ -737,6 +737,38 @@ async def list_reports(
     return ReportListResponse(total=total, reports=reports)
 
 
+
+@router.get(
+    "/reports/{filename}",
+    summary="Rapor İçeriğini Oku",
+    response_description="Markdown rapor içeriği (ham metin)",
+)
+async def get_report_content(
+    filename: str,
+    settings: Annotated[AppSettings, Depends(get_settings)],
+) -> dict:
+    """
+    Belirtilen Markdown rapor dosyasının ham içeriğini döndürür.
+    Dashboard raporlar sekmesi bu endpoint üzerinden raporu okur.
+    """
+    from datetime import datetime, UTC
+    from pathlib import Path as _Path
+    report_path = settings.reports_dir / filename
+    if not report_path.exists() or report_path.suffix != ".md":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "REPORT_NOT_FOUND", "message": f"Rapor bulunamadi: '{filename}'"},
+        )
+    content_text = report_path.read_text(encoding="utf-8")
+    stat = report_path.stat()
+    return {
+        "filename": filename,
+        "content": content_text,
+        "size_bytes": stat.st_size,
+        "modified_at": datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+    }
+
+
 @router.get(
     "/health",
     response_model=HealthResponse,
