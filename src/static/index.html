@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>ISU SecOps | Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-main: #050814;
+  --bg-sidebar: #0a0f25;
+  --bg-card: #111832;
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Inter",sans-serif; background:var(--bg-main); color:var(--text-main); display:flex; height:100vh; overflow:hidden; }
+.sidebar { width:240px; background:var(--bg-sidebar); border-right:1px solid var(--border-color); display:flex; flex-direction:column; padding:20px 0; z-index:10; }
+.logo-wrap { display:flex; align-items:center; gap:12px; padding:0 20px 20px; border-bottom:1px solid var(--border-color); margin-bottom:20px; }
+.logo-icon { width:32px; height:32px; background:linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; }
+.logo-text { font-size:18px; font-weight:700; letter-spacing:1px; background:linear-gradient(to right, #60a5fa, #c084fc); -webkit-background-clip:text; color:transparent; }
+.nav-item { padding:12px 20px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all 0.2s; color:var(--text-muted); font-size:14px; font-weight:500; border-left:3px solid transparent; }
+.nav-item:hover, .nav-item.active { background:rgba(59, 130, 246, 0.1); color:white; border-left-color:var(--accent-blue); }
+.nav-icon { font-size:18px; }
+.main-content { flex:1; display:flex; flex-direction:column; overflow-y:auto; }
+.header { height:70px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; padding:0 30px; background:var(--bg-main); position:sticky; top:0; z-index:5; }
+.header-title { font-size:20px; font-weight:600; }
+.header-right { display:flex; align-items:center; gap:20px; }
+.clock { font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--text-muted); background:var(--bg-card); padding:6px 12px; border-radius:6px; border:1px solid var(--border-color); }
+.status-badge { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--success); background:rgba(16,185,129,0.1); padding:6px 12px; border-radius:20px; border:1px solid rgba(16,185,129,0.2); }
+.status-dot { width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success); }
+.dashboard-grid { padding:30px; display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; }
+.stat-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:20px; position:relative; overflow:hidden; }
+.stat-card::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(to right, var(--accent-blue), var(--accent-purple)); opacity:0.5; }
+.stat-title { font-size:13px; color:var(--text-muted); font-weight:500; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }
+.stat-value { font-size:28px; font-weight:700; font-family:'JetBrains Mono', monospace; }
+.stat-trend { font-size:12px; margin-top:8px; display:flex; align-items:center; gap:4px; }
+.trend-up { color:var(--danger); }
+.trend-down { color:var(--success); }
+.chart-container { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:20px; grid-column:span 2; }
+.chart-container.full-width { grid-column:span 4; }
+.chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.chart-title { font-size:16px; font-weight:600; }
+.table-container { background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; grid-column:span 4; overflow:hidden; }
+.table-container table { width:100%; border-collapse:collapse; text-align:left; }
+.table-container th { background:rgba(255,255,255,0.02); padding:15px 20px; font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border-color); }
+.table-container td { padding:15px 20px; font-size:14px; border-bottom:1px solid var(--border-color); color:#cbd5e1; }
+.table-container tr:last-child td { border-bottom:none; }
+.table-container tr:hover td { background:rgba(255,255,255,0.02); }
+.badge { padding:4px 10px; border-radius:4px; font-size:12px; font-weight:600; }
+.badge.critical { background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.2); }
+.badge.high { background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.2); }
+.badge.low { background:rgba(59,130,246,0.1); color:var(--accent-blue); border:1px solid rgba(59,130,246,0.2); }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-icon">&#128640;</div>
+    <div class="logo-text">ISU SecOps</div>
+  </div>
+  <div class="nav-item active" onclick="go('dash')">
+    <span class="nav-icon">&#128202;</span> Dashboard
+  </div>
+  <div class="nav-item" onclick="go('scans')">
+    <span class="nav-icon">&#128269;</span> Taramalar
+  </div>
+  <div class="nav-item" onclick="go('threats')">
+    <span class="nav-icon">&#9888;&#65039;</span> Tehditler
+  </div>
+  <div class="nav-item" onclick="go('reports')">
+    <span class="nav-icon">&#128196;</span> Raporlar
+  </div>
+  <div class="nav-item" onclick="go('settings')">
+    <span class="nav-icon">&#9881;&#65039;</span> Ayarlar
+  </div>
+</nav>
+
+<div class="main-content">
+  <div class="header">
+    <div class="header-title" id="page-title">Güvenlik Özeti</div>
+    <div class="header-right">
+      <div class="clock" id="clk">00:00:00</div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        Sistem Aktif
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid" id="main-view">
+    <!-- Stat Cards -->
+    <div class="stat-card">
+      <div class="stat-title">Engellenen Tehditler</div>
+      <div class="stat-value">1,247</div>
+      <div class="stat-trend trend-down">&#9660; %12 geçen haftaya göre</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Aktif Taramalar</div>
+      <div class="stat-value">4</div>
+      <div class="stat-trend" style="color:var(--text-muted)">3 bekleyen tarama</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Kritik Bulgular</div>
+      <div class="stat-value" style="color:var(--danger)">23</div>
+      <div class="stat-trend trend-up">&#9650; %5 artış</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">İncelenen Olaylar</div>
+      <div class="stat-value">8.4K</div>
+      <div class="stat-trend trend-up">&#9650; %22 trafik artışı</div>
+    </div>
+
+    <!-- Charts -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <div class="chart-title">Ağ Trafiği Analizi</div>
+      </div>
+      <canvas id="trafficChart" height="200"></canvas>
+    </div>
+    <div class="chart-container">
+      <div class="chart-header">
+        <div class="chart-title">Tehdit Dağılımı</div>
+      </div>
+      <canvas id="threatChart" height="200"></canvas>
+    </div>
+
+    <!-- Recent Alerts -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Zaman</th>
+            <th>Hedef IP</th>
+            <th>Tehdit Türü</th>
+            <th>Seviye</th>
+            <th>Durum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>10 dk önce</td>
+            <td style="font-family:'JetBrains Mono',monospace">192.168.1.105</td>
+            <td>SQL Injection Denemesi</td>
+            <td><span class="badge critical">Kritik</span></td>
+            <td style="color:var(--success)">Engellendi</td>
+          </tr>
+          <tr>
+            <td>45 dk önce</td>
+            <td style="font-family:'JetBrains Mono',monospace">10.0.2.15</td>
+            <td>Açık Port Taraması (Nmap)</td>
+            <td><span class="badge high">Yüksek</span></td>
+            <td style="color:var(--warning)">İnceleniyor</td>
+          </tr>
+          <tr>
+            <td>2 saat önce</td>
+            <td style="font-family:'JetBrains Mono',monospace">172.16.0.44</td>
+            <td>Yetkisiz Giriş Denemesi</td>
+            <td><span class="badge high">Yüksek</span></td>
+            <td style="color:var(--success)">Engellendi</td>
+          </tr>
+          <tr>
+            <td>5 saat önce</td>
+            <td style="font-family:'JetBrains Mono',monospace">192.168.1.200</td>
+            <td>Geçersiz SSL Sertifikası</td>
+            <td><span class="badge low">Düşük</span></td>
+            <td style="color:var(--text-muted)">Raporlandı</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// Clock
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('clk').textContent = d.toLocaleTimeString('tr-TR') + ' - ' + d.toLocaleDateString('tr-TR');
+}, 1000);
+
+// Navigation Mock
+function go(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  const titles = {
+    'dash': 'Güvenlik Özeti',
+    'scans': 'Aktif Taramalar',
+    'threats': 'Tehdit İstihbaratı',
+    'reports': 'Sistem Raporları',
+    'settings': 'Platform Ayarları'
+  };
+  document.getElementById('page-title').textContent = titles[page];
+}
+
+// Init Charts safely
+try {
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  
+  // Traffic Chart
+  new Chart(document.getElementById('trafficChart'), {
+    type: 'line',
+    data: {
+      labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+      datasets: [{
+        label: 'Gelen İstekler',
+        data: [1200, 900, 2500, 3800, 3200, 4100, 2100],
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#050814',
+        pointBorderColor: '#3b82f6',
+        pointBorderWidth: 2
+      }, {
+        label: 'Engellenen',
+        data: [50, 20, 150, 420, 310, 580, 120],
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.05)',
+        tension: 0.4,
+        fill: true,
+        borderDash: [5, 5]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+      scales: {
+        y: { grid: { color: '#1e293b' }, beginAtZero: true },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Threat Chart
+  new Chart(document.getElementById('threatChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Malware', 'Phishing', 'DDoS', 'Yetkisiz Erişim'],
+      datasets: [{
+        data: [35, 25, 20, 20],
+        backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '75%',
+      plugins: {
+        legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } }
+      }
+    }
+  });
+} catch (e) {
+  console.error("Grafik oluşturulurken hata:", e);
+}
+</script>
+</body>
+</html>

@@ -26,7 +26,8 @@ from typing import Annotated, Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from .config import AppSettings, get_settings
@@ -438,6 +439,10 @@ curl -X POST http://localhost:8000/api/v1/scan \\
     _register_exception_handlers(app)
 
     # Router'ları kaydet
+    import os
+    static_dir = os.path.join(os.path.dirname(__file__), "..", "..", "static")
+    if os.path.exists(static_dir):
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
     app.include_router(router, prefix="/api/v1")
 
     return app
@@ -499,6 +504,17 @@ def _register_exception_handlers(app: FastAPI) -> None:
 from fastapi import APIRouter  # noqa: E402
 
 router = APIRouter(tags=["Security Operations"])
+
+
+@router.get("/dashboard-redirect", include_in_schema=False)
+async def dashboard():
+    import os
+    f = os.path.join(os.path.dirname(__file__), "..", "..", "static", "index.html")
+    if os.path.exists(f):
+        from fastapi.responses import HTMLResponse
+        from fastapi.responses import Response
+        return Response(open(f, encoding="utf-8").read(), media_type="text/html; charset=utf-8")
+    return {"msg": "Dashboard bulunamadı"}
 
 
 @router.get(
