@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://istinye.edu.tr">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/%C4%B0stinye_%C3%9Cniversitesi_logo.svg/360px-%C4%B0stinye_%C3%9Cniversitesi_logo.svg.png" alt="İstinye Üniversitesi" width="180"/>
+    <img src="https://istinye.edu.tr/images/logo.png" alt="İstinye Üniversitesi" width="180"/>
   </a>
 
   # ISU-SecOps-Orchestrator
@@ -37,6 +37,12 @@
 | **Kredi** | 3 AKTS |
 | **Ön Koşullar** | Ağ Temelleri, Linux CLI, Python, Rust |
 | **Dönem** | 2025-2026 Bahar |
+
+---
+
+## 🎬 Demo Video
+
+[▶ demo.mp4](./demo.mp4)
 
 ---
 
